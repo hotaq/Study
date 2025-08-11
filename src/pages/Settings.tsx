@@ -9,7 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { ArrowLeft, Upload, Shield } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -18,6 +19,7 @@ interface Profile {
   username: string
   full_name: string | null
   avatar_url: string | null
+  stats_private: boolean
 }
 
 export function Settings() {
@@ -31,6 +33,7 @@ export function Settings() {
   // Form states
   const [username, setUsername] = useState('')
   const [fullName, setFullName] = useState('')
+  const [statsPrivate, setStatsPrivate] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -66,12 +69,13 @@ export function Settings() {
     if (profile) {
       setUsername(profile.username || '')
       setFullName(profile.full_name || '')
+      setStatsPrivate(profile.stats_private || false)
     }
   }, [profile])
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: (profileData: { username: string; full_name: string }) => {
+    mutationFn: (profileData: { username: string; full_name: string; stats_private: boolean }) => {
       return updateProfile(profileData)
     },
     onSuccess: () => {
@@ -93,6 +97,7 @@ export function Settings() {
     updateProfileMutation.mutate({
       username,
       full_name: fullName,
+      stats_private: statsPrivate,
     })
   }
 
@@ -254,6 +259,7 @@ export function Settings() {
           <Tabs defaultValue="profile">
             <TabsList className="mb-3 sm:mb-4 w-full">
               <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
+              <TabsTrigger value="privacy" className="flex-1">Privacy</TabsTrigger>
               <TabsTrigger value="password" className="flex-1">Password</TabsTrigger>
             </TabsList>
             
@@ -315,6 +321,51 @@ export function Settings() {
                       {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="privacy">
+              <Card>
+                <CardHeader className="px-4 py-4 sm:px-6 sm:py-6">
+                  <CardTitle className="text-lg sm:text-xl flex items-center">
+                    <Shield className="h-5 w-5 mr-2" />
+                    Privacy Settings
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Control how your information is shared with other users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-4 py-4 sm:px-6 sm:py-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between space-x-2">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="stats-private" className="text-base font-medium">
+                          Private Statistics
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          When enabled, other users won't be able to see your study statistics (total time, sessions) when hovering over your profile in rooms.
+                        </p>
+                      </div>
+                      <Switch
+                        id="stats-private"
+                        checked={statsPrivate}
+                        onCheckedChange={setStatsPrivate}
+                      />
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="pt-2">
+                      <Button 
+                        onClick={handleUpdateProfile} 
+                        disabled={updateProfileMutation.isPending}
+                        className="w-full sm:w-auto"
+                      >
+                        {updateProfileMutation.isPending ? 'Saving...' : 'Save Privacy Settings'}
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

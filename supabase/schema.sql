@@ -8,6 +8,7 @@ CREATE TABLE public.profiles (
   username text UNIQUE NOT NULL,
   full_name text,
   avatar_url text,
+  stats_private boolean DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now()
 );

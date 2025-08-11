@@ -9,7 +9,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, username: string) => Promise<void>
   signOut: () => Promise<void>
   updatePassword: (password: string) => Promise<void>
-  updateProfile: (profile: { username?: string; full_name?: string; avatar_url?: string }) => Promise<void>
+  updateProfile: (profile: { username?: string; full_name?: string; avatar_url?: string; stats_private?: boolean }) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  const updateProfile = async (profile: { username?: string; full_name?: string; avatar_url?: string }) => {
+  const updateProfile = async (profile: { username?: string; full_name?: string; avatar_url?: string; stats_private?: boolean }) => {
     if (!user) throw new Error('User not authenticated')
     
     const { error } = await supabase

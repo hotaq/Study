@@ -229,17 +229,39 @@ const Room = () => {
           }
         }));
       } else {
-        // For other users, show privacy message due to RLS policies
-        setUserStats(prev => ({
-          ...prev,
-          [userId]: {
-            totalTime: 0,
-            sessions: 0,
-            score: 0,
-            mainSubject: 'Private',
-            loading: false
-          }
-        }));
+        // For other users, first check their privacy settings
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('stats_private')
+          .eq('id', userId)
+          .single();
+        
+        if (profileError || profileData?.stats_private) {
+          // User has privacy enabled or error fetching profile
+          setUserStats(prev => ({
+            ...prev,
+            [userId]: {
+              totalTime: 0,
+              sessions: 0,
+              score: 0,
+              mainSubject: 'Private',
+              loading: false
+            }
+          }));
+        } else {
+          // User allows stats to be visible, but we still can't fetch due to RLS
+          // Show a message indicating stats are available but restricted
+          setUserStats(prev => ({
+            ...prev,
+            [userId]: {
+              totalTime: 0,
+              sessions: 0,
+              score: 0,
+              mainSubject: 'Restricted',
+              loading: false
+            }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error fetching user stats:', error);
@@ -908,19 +930,19 @@ const Room = () => {
                        <div className="flex gap-1 text-xs">
                          <span 
                            className="px-1 py-0.5 rounded cursor-help" 
-                           title={`Total Time: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? formatTime(userStats[participant.id].totalTime * 60) : 'Private') : 'No data'}`}
+                           title={`Total Time: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? formatTime(userStats[participant.id].totalTime * 60) : userStats[participant.id].mainSubject === 'Private' ? 'Private (user has privacy enabled)' : userStats[participant.id].mainSubject === 'Restricted' ? 'Data not available (database restrictions)' : 'Private') : 'No data'}`}
                          >
                            ⏰
                          </span>
                          <span 
                            className="px-1 py-0.5 rounded cursor-help" 
-                           title={`Sessions: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? userStats[participant.id].sessions : 'Private') : 'No data'}`}
+                           title={`Sessions: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? userStats[participant.id].sessions : userStats[participant.id].mainSubject === 'Private' ? 'Private (user has privacy enabled)' : userStats[participant.id].mainSubject === 'Restricted' ? 'Data not available (database restrictions)' : 'Private') : 'No data'}`}
                          >
                            🎯
                          </span>
                          <span 
                            className="px-1 py-0.5 rounded cursor-help" 
-                           title={`Study Subject: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? userStats[participant.id].mainSubject : 'No data'}`}
+                           title={`Study Subject: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? userStats[participant.id].mainSubject : userStats[participant.id].mainSubject === 'Private' ? 'Private (user has privacy enabled)' : userStats[participant.id].mainSubject === 'Restricted' ? 'Data not available (database restrictions)' : userStats[participant.id].mainSubject) : 'No data'}`}
                          >
                            📚
                          </span>

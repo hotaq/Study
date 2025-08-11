@@ -42,12 +42,15 @@ export const StudyTimer = ({ onSessionComplete, onTimeUpdate, mode, displayStyle
       interval = setInterval(() => {
         if (mode === "pomodoro" || mode === "custom") {
           // Count down for Pomodoro and Custom modes
-          if (time > 0) {
-            setTime((time) => time - 1);
-          } else {
-            setIsRunning(false);
-            onSessionComplete?.(mode === "pomodoro" ? POMODORO_TIME : CUSTOM_TIME);
-          }
+          setTime((prevTime) => {
+            if (prevTime > 0) {
+              return prevTime - 1;
+            } else {
+              setIsRunning(false);
+              onSessionComplete?.(mode === "pomodoro" ? POMODORO_TIME : CUSTOM_TIME);
+              return 0;
+            }
+          });
         } else {
           // Count up for unlimited mode
           setElapsedTime((prev) => {
@@ -68,7 +71,7 @@ export const StudyTimer = ({ onSessionComplete, onTimeUpdate, mode, displayStyle
     }
     
     return () => clearInterval(interval);
-  }, [isRunning, time, mode, POMODORO_TIME, CUSTOM_TIME, onSessionComplete, elapsedTime]);
+  }, [isRunning, mode, POMODORO_TIME, CUSTOM_TIME, onSessionComplete, onTimeUpdate]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -93,7 +96,27 @@ export const StudyTimer = ({ onSessionComplete, onTimeUpdate, mode, displayStyle
     ? ((totalTime - time) / totalTime) * 100 
     : (elapsedTime % 300) / 300 * 100; // For unlimited mode, use a 5-minute cycle for the progress indicator
 
+  const handlePause = () => {
+    setIsRunning(false);
+    
+    // For unlimited mode, save session when pausing if there's elapsed time
+    if (mode === "unlimited" && elapsedTime > 0) {
+      const durationMinutes = Math.floor(elapsedTime / 60);
+      if (durationMinutes > 0) {
+        onSessionComplete?.(elapsedTime);
+      }
+    }
+  };
+
   const handleReset = () => {
+    // For unlimited mode, save session before resetting if there's elapsed time
+    if (mode === "unlimited" && elapsedTime > 0) {
+      const durationMinutes = Math.floor(elapsedTime / 60);
+      if (durationMinutes > 0) {
+        onSessionComplete?.(elapsedTime);
+      }
+    }
+    
     if (mode === "pomodoro") {
       setTime(POMODORO_TIME);
     } else if (mode === "custom") {
@@ -164,7 +187,7 @@ export const StudyTimer = ({ onSessionComplete, onTimeUpdate, mode, displayStyle
         <Button
           variant={isRunning ? "secondary" : "default"}
           size="lg"
-          onClick={() => setIsRunning(!isRunning)}
+          onClick={() => isRunning ? handlePause() : setIsRunning(true)}
           className="flex items-center gap-2"
         >
           {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
