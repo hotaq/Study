@@ -1,73 +1,125 @@
-# Welcome to your Lovable project
+# Grind & Glow - Study Productivity App
 
-## Project info
+<div align="center">
 
-**URL**: https://lovable.dev/projects/9cc2aad1-d1c2-47e4-9e9f-422a643377d0
+![Grind & Glow](https://img.shields.io/badge/Grind%20%26%20Glow-Study%20Productivity-blueviolet)
+![React](https://img.shields.io/badge/React-18.3.1-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue)
+![Vite](https://img.shields.io/badge/Vite-5.4.19-green)
+![Supabase](https://img.shields.io/badge/Supabase-2.54.0-orange)
 
-## How can I edit this code?
+</div>
 
-There are several ways of editing your application.
+Grind & Glow is a modern study productivity application designed to help students and professionals track their study sessions, set goals, and visualize their progress through comprehensive analytics.
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9cc2aad1-d1c2-47e4-9e9f-422a643377d0) and start prompting.
+- **Study Rooms**: Create and join study rooms to focus on your work
+- **Pomodoro Timer**: Use the built-in timer with customizable settings
+  - Pomodoro mode
+  - Unlimited mode
+  - Custom time settings
+- **Goal Setting**: Set and track different types of study goals
+  - Time-based goals
+  - Session-based goals
+  - Score-based goals
+- **Analytics Dashboard**: Visualize your study habits with detailed charts
+  - Daily, weekly, monthly, and yearly views
+  - Track total study time, sessions completed, and more
+  - Study streak tracking
+- **User Authentication**: Secure login and signup with Supabase
+- **Responsive Design**: Works on desktop and mobile devices
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚀 Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v16 or higher)
+- npm or bun
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Installation
 
-Follow these steps:
+```bash
+# Clone the repository
+git clone https://github.com/hotaq/Study.git
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Navigate to the project directory
+cd Study
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
+# or
+bun install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
+# or
+bun run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🛠️ Tech Stack
 
-**Use GitHub Codespaces**
+- **Frontend**:
+  - React 18
+  - TypeScript
+  - Vite
+  - React Router
+  - Tailwind CSS
+  - shadcn/ui components
+  - Recharts for data visualization
+  - date-fns for date manipulation
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **Backend**:
+  - Supabase for authentication and database
+  - React Query for data fetching
 
-## What technologies are used for this project?
+## 📊 Database Schema
 
-This project is built with:
+The application uses Supabase with the following main tables:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **users**: User authentication and profile information
+- **rooms**: Study room details and settings
+- **study_sessions**: Records of completed study sessions
 
-## How can I deploy this project?
+## 🧩 Project Structure
 
-Simply open [Lovable](https://lovable.dev/projects/9cc2aad1-d1c2-47e4-9e9f-422a643377d0) and click on Share -> Publish.
+```
+/src
+  /components      # UI components
+  /contexts        # React contexts (Auth, etc.)
+  /hooks           # Custom React hooks
+  /lib             # Utility functions and libraries
+  /pages           # Main application pages
+  App.tsx          # Main application component
+  index.css        # Global styles
+  main.tsx         # Application entry point
+```
 
-## Can I connect a custom domain to my Lovable project?
+## 🔒 Authentication
 
-Yes, you can!
+The application uses Supabase for authentication with the following features:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- Email/password authentication
+- Protected routes for authenticated users
+- User profile management
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🎯 Future Enhancements
+
+- Social features to connect with study partners
+- Integration with calendar applications
+- Advanced statistics and insights
+- Customizable study themes
+- Mobile application
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgements
+
+- [shadcn/ui](https://ui.shadcn.com/) for the beautiful UI components
+- [Supabase](https://supabase.com/) for the backend services
+- [Recharts](https://recharts.org/) for the data visualization
+- [Lucide Icons](https://lucide.dev/) for the icon set
