@@ -6,6 +6,7 @@ import { RoomSettingsDialog } from "@/components/RoomSettingsDialog";
 import { GoalSettingsDialog } from "@/components/GoalSettingsDialog";
 import { GoalProgressDisplay } from "@/components/GoalProgressDisplay";
 import { ScoreInputDialog } from "@/components/ScoreInputDialog";
+import { SubjectSelect } from "@/components/SubjectSelect";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,8 @@ const Room = () => {
     const savedSessions = localStorage.getItem(`room_${roomId}_sessions`);
     return savedSessions ? parseInt(savedSessions, 10) : 0;
   });
+  
+  // selectedSubject is declared below with type annotation
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
     // Try to load saved sound setting from localStorage
     const savedSoundEnabled = localStorage.getItem(`room_${roomId}_soundEnabled`);
@@ -48,6 +51,11 @@ const Room = () => {
     // Try to load saved timer mode from localStorage
     const savedTimerMode = localStorage.getItem(`room_${roomId}_timerMode`);
     return (savedTimerMode as "pomodoro" | "unlimited" | "custom") || "pomodoro";
+  });
+  const [selectedSubject, setSelectedSubject] = useState<string>(() => {
+    // Try to load saved subject from localStorage
+    const savedSubject = localStorage.getItem(`room_${roomId}_subject`);
+    return savedSubject || "";
   });
   const [displayStyle, setDisplayStyle] = useState<"circle" | "bar">(() => {
     // Try to load saved display style from localStorage
@@ -238,12 +246,31 @@ const Room = () => {
     if (user) {
       try {
         const durationMinutes = Math.round(duration / 60);
+        
+        // Get the subject ID from the room's preset or from the selected subject
+        let subjectId = selectedSubject;
+        
+        // If no subject is explicitly selected, try to get it from the room preset
+        if (!subjectId && room?.preset) {
+          // Try to find a subject that matches the room preset
+          const { data: presetSubjects } = await supabase
+            .from('subjects')
+            .select('id')
+            .ilike('name', `%${room.preset}%`)
+            .limit(1);
+            
+          if (presetSubjects && presetSubjects.length > 0) {
+            subjectId = presetSubjects[0].id;
+          }
+        }
+        
         const { error } = await supabase
           .from('study_sessions')
           .insert({
             user_id: user.id,
             room_id: roomId,
             duration_minutes: durationMinutes,
+            subject_id: subjectId || null,
           });
           
         if (error) {
@@ -724,6 +751,15 @@ const Room = () => {
               <h3 className="text-lg font-semibold text-foreground mb-4">Room Controls</h3>
               
               <div className="space-y-3">
+                <SubjectSelect
+                  value={selectedSubject}
+                  onValueChange={(value) => {
+                    setSelectedSubject(value);
+                    localStorage.setItem(`room_${roomId}_subject`, value);
+                  }}
+                  label="Study Subject"
+                  placeholder="Select a subject for analytics"
+                />
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"

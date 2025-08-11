@@ -27,7 +27,11 @@ interface AnalyticsData {
   year: ChartData[];
 }
 
-export const StudyAnalytics = () => {
+interface StudyAnalyticsProps {
+  subject_id?: string;
+}
+
+export const StudyAnalytics = ({ subject_id }: StudyAnalyticsProps) => {
   const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<keyof AnalyticsData>("week");
   const [loading, setLoading] = useState(true);
@@ -43,7 +47,7 @@ export const StudyAnalytics = () => {
     if (user) {
       fetchStudySessions();
     }
-  }, [user]);
+  }, [user, subject_id]);
   
   useEffect(() => {
     if (studySessions.length > 0) {
@@ -59,12 +63,20 @@ export const StudyAnalytics = () => {
       // Get sessions from the past year
       const oneYearAgo = subYears(new Date(), 1);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('study_sessions')
         .select('*')
         .eq('user_id', user?.id)
-        .gte('completed_at', oneYearAgo.toISOString())
-        .order('completed_at', { ascending: true });
+        .gte('completed_at', oneYearAgo.toISOString());
+      
+      // Filter by subject if provided
+      if (subject_id) {
+        query = query.eq('subject_id', subject_id);
+      }
+      
+      query = query.order('completed_at', { ascending: true });
+      
+      const { data, error } = await query;
       
       if (error) {
         throw error;

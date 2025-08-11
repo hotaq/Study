@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Clock, Target, Award, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StudyAnalytics } from '@/components/StudyAnalytics';
+import { SubjectSelect } from '@/components/SubjectSelect';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 
@@ -14,12 +15,15 @@ interface StudySession {
   id: string;
   user_id: string;
   room_id: string;
-  room_name?: string;
+  room_name: string;
+  subject_id?: string;
+  subject_name?: string;
+  subject_color?: string;
   duration_minutes: number;
   completed_at: string;
 }
 
-export function Analytics() {
+function Analytics() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
@@ -29,12 +33,13 @@ export function Analytics() {
   const [averageSessionTime, setAverageSessionTime] = useState(0);
   const [longestSession, setLongestSession] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
 
   useEffect(() => {
     if (user) {
       fetchStudySessions();
     }
-  }, [user, selectedPeriod]);
+  }, [user, selectedPeriod, selectedSubject]);
 
   const fetchStudySessions = async () => {
     try {
@@ -57,12 +62,18 @@ export function Analytics() {
           room_id,
           duration_minutes,
           completed_at,
-          rooms(name)
+          subject_id,
+          rooms(name),
+          subjects(name, color)
         `)
         .eq('user_id', user?.id);
       
       if (selectedPeriod !== 'all') {
         query = query.gte('completed_at', startDate.toISOString());
+      }
+      
+      if (selectedSubject) {
+        query = query.eq('subject_id', selectedSubject);
       }
       
       query = query.order('completed_at', { ascending: false });
@@ -79,14 +90,19 @@ export function Analytics() {
           id: string;
           user_id: string;
           room_id: string;
+          subject_id?: string;
           duration_minutes: number;
           completed_at: string;
           rooms: { name: string }[];
+          subjects?: { name: string; color: string }[];
         }) => ({
           id: session.id,
           user_id: session.user_id,
           room_id: session.room_id,
           room_name: session.rooms && session.rooms.length > 0 ? session.rooms[0].name : 'Unknown Room',
+          subject_id: session.subject_id,
+          subject_name: session.subjects && session.subjects.length > 0 ? session.subjects[0].name : undefined,
+          subject_color: session.subjects && session.subjects.length > 0 ? session.subjects[0].color : undefined,
           duration_minutes: session.duration_minutes,
           completed_at: session.completed_at
         }));
@@ -147,7 +163,15 @@ export function Analytics() {
 
           <TabsContent value="overview">
             <div className="space-y-6">
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                <div className="w-full sm:w-64">
+                  <SubjectSelect
+                    value={selectedSubject}
+                    onValueChange={setSelectedSubject}
+                    label="Filter by Subject"
+                    placeholder="All Subjects"
+                  />
+                </div>
                 <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'all')}>
                   <TabsList className="enhanced-tabs">
                     <TabsTrigger value="week" className="enhanced-tab">Week</TabsTrigger>
@@ -214,6 +238,13 @@ export function Analytics() {
                           <div>
                             <div className="font-medium">{session.room_name}</div>
                             <div className="text-sm text-muted-foreground">{formatDate(session.completed_at)}</div>
+                            {session.subject_name && (
+                              <div className="mt-1">
+                                <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: session.subject_color, color: '#fff' }}>
+                                  {session.subject_name}
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <div className="text-right">
                             <div className="font-medium">{formatTime(session.duration_minutes)}</div>
@@ -264,7 +295,7 @@ export function Analytics() {
           </TabsContent>
 
           <TabsContent value="charts">
-            <StudyAnalytics />
+            <StudyAnalytics subject_id={selectedSubject} />
           </TabsContent>
         </Tabs>
       </div>
