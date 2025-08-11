@@ -20,11 +20,14 @@ import {
   Coffee,
   Target,
   Clock,
-  Trophy
+  Trophy,
+  BookOpen
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { format, subMonths } from "date-fns";
 
 const Room = () => {
   const { roomId } = useParams();
@@ -95,6 +98,18 @@ const Room = () => {
     isOnline: boolean;
     examScore: number | null;
   }
+  
+  // Define user stats interface for tooltip
+  interface UserStats {
+    totalTime: number;
+    sessions: number;
+    score: number;
+    mainSubject: string;
+    loading: boolean;
+  }
+  
+  // State to store user statistics for tooltips
+  const [userStats, setUserStats] = useState<Record<string, UserStats>>({});
 
   const [room, setRoom] = useState({
     id: roomId,
@@ -126,6 +141,119 @@ const Room = () => {
       description: "Getting the latest participant information",
     });
     fetchRoomDetails(true);
+  };
+  
+  // Function to fetch user statistics for tooltip
+  const fetchUserStats = async (userId: string) => {
+    // If we already have stats loading for this user, don't fetch again
+    if (userStats[userId]?.loading) return;
+    
+    // Set initial loading state
+    setUserStats(prev => ({
+      ...prev,
+      [userId]: {
+        totalTime: 0,
+        sessions: 0,
+        score: 0,
+        mainSubject: 'None',
+        loading: true
+      }
+    }));
+    
+    try {
+      // Check if this is the current user or another user
+      const isCurrentUser = userId === user?.id;
+      
+      if (isCurrentUser) {
+        // For current user, fetch full stats
+        const endDate = new Date();
+        const startDate = subMonths(endDate, 3);
+        
+        const { data: sessions, error } = await supabase
+          .from('study_sessions')
+          .select(`
+            id,
+            duration_minutes,
+            subject_id,
+            subjects(name)
+          `)
+          .eq('user_id', userId)
+          .gte('completed_at', startDate.toISOString());
+        
+        if (error) throw error;
+        
+        const totalTime = sessions?.reduce((sum, session) => sum + session.duration_minutes, 0) || 0;
+        const sessionsCount = sessions?.length || 0;
+        
+        // Find most studied subject
+        const subjectCounts: Record<string, { minutes: number, name: string }> = {};
+        sessions?.forEach(session => {
+          const subjectId = session.subject_id || 'unknown';
+          const subjectName = (session.subjects as { name: string }[])?.[0]?.name || 'Unknown';
+          
+          if (!subjectCounts[subjectId]) {
+            subjectCounts[subjectId] = { minutes: 0, name: subjectName };
+          }
+          
+          subjectCounts[subjectId].minutes += session.duration_minutes;
+        });
+        
+        let mainSubject = 'None';
+        let maxMinutes = 0;
+        
+        Object.entries(subjectCounts).forEach(([_, data]) => {
+          if (data.minutes > maxMinutes) {
+            maxMinutes = data.minutes;
+            mainSubject = data.name;
+          }
+        });
+        
+        // Fetch user's productivity score
+        const { data: scoreData } = await supabase
+          .from('exam_scores')
+          .select('score')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        const score = scoreData && scoreData.length > 0 ? scoreData[0].score : 0;
+        
+        setUserStats(prev => ({
+          ...prev,
+          [userId]: {
+            totalTime,
+            sessions: sessionsCount,
+            score,
+            mainSubject,
+            loading: false
+          }
+        }));
+      } else {
+        // For other users, show privacy message due to RLS policies
+        setUserStats(prev => ({
+          ...prev,
+          [userId]: {
+            totalTime: 0,
+            sessions: 0,
+            score: 0,
+            mainSubject: 'Private',
+            loading: false
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      setUserStats(prev => ({
+        ...prev,
+        [userId]: {
+          totalTime: 0,
+          sessions: 0,
+          score: 0,
+          mainSubject: 'Error',
+          loading: false
+        }
+      }));
+    }
   };
   
   const fetchRoomDetails = async (isManualRefresh = false) => {
@@ -206,6 +334,11 @@ const Room = () => {
         preset: roomData.preset,
         participants
       });
+      
+      // Fetch statistics for all participants
+      participants.forEach(participant => {
+        fetchUserStats(participant.id);
+      });
     } catch (error) {
       console.error('Error fetching room details:', error);
       toast({
@@ -225,6 +358,16 @@ const Room = () => {
         });
       }
     }
+  };
+
+  const handleTimeUpdate = (seconds: number) => {
+    // Update total study time continuously (for unlimited mode)
+    setTotalStudyTime(prev => {
+      const newValue = prev + seconds;
+      // Save updated total study time to localStorage
+      localStorage.setItem(`room_${roomId}_totalTime`, newValue.toString());
+      return newValue;
+    });
   };
 
   const handleSessionComplete = async (duration: number) => {
@@ -264,6 +407,13 @@ const Room = () => {
           }
         }
         
+        console.log('Saving study session:', {
+          user_id: user.id,
+          room_id: roomId,
+          duration_minutes: durationMinutes,
+          subject_id: subjectId || null,
+        });
+        
         const { error } = await supabase
           .from('study_sessions')
           .insert({
@@ -275,6 +425,17 @@ const Room = () => {
           
         if (error) {
           console.error('Error saving study session:', error);
+          toast({
+            title: "Error saving session",
+            description: "Failed to save study session to analytics",
+            variant: "destructive"
+          });
+        } else {
+          console.log('Study session saved successfully');
+          toast({
+            title: "Session saved",
+            description: "Study session saved to analytics",
+          });
         }
       } catch (error) {
         console.error('Error saving study session:', error);
@@ -357,6 +518,13 @@ const Room = () => {
       description: "Congratulations! You've reached your study goal!",
       variant: "default",
     });
+  };
+  
+  // Test function to manually save a session for debugging
+  const handleTestSaveSession = async () => {
+    if (user) {
+      await handleSessionComplete(25 * 60); // Save a 25-minute session
+    }
   };
   
   const handleScoreSubmit = async (score: number) => {
@@ -635,6 +803,7 @@ const Room = () => {
             
             <StudyTimer 
                 onSessionComplete={handleSessionComplete}
+                onTimeUpdate={handleTimeUpdate}
                 mode={timerMode}
                 displayStyle={displayStyle}
                 customTime={customTime}
@@ -698,7 +867,7 @@ const Room = () => {
                   </div>
                 ) : room.participants.length > 0 ? (
                   room.participants.map((participant) => (
-                    <div key={participant.id} className="flex items-center gap-3">
+                    <div key={participant.id} className="flex items-center gap-3 p-2 rounded-lg">
                       <div className="relative">
                         <Avatar className="w-8 h-8">
                           {participant.avatarUrl ? (
@@ -720,22 +889,42 @@ const Room = () => {
                         />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-foreground">
-                          {participant.fullName || participant.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {participant.isOnline ? 'Online' : 'Away'}
-                        </div>
-                        {goalType === "score" && (
-                          <Badge variant="secondary" className="mt-1 text-xs">
-                            {participant.id === user?.id 
-                              ? `${currentScore} pts` 
-                              : participant.examScore !== null 
-                                ? `${participant.examScore} pts` 
-                                : 'No score'}
-                          </Badge>
-                        )}
-                      </div>
+                         <div className="text-sm font-medium text-foreground">
+                           {participant.fullName || participant.name}
+                         </div>
+                         <div className="text-xs text-muted-foreground">
+                           {participant.isOnline ? 'Online' : 'Away'}
+                         </div>
+                         {goalType === "score" && (
+                           <Badge variant="secondary" className="mt-1 text-xs">
+                             {participant.id === user?.id 
+                               ? `${currentScore} pts` 
+                               : participant.examScore !== null 
+                                 ? `${participant.examScore} pts` 
+                           : 'No score'}
+                           </Badge>
+                         )}
+                       </div>
+                       <div className="flex gap-1 text-xs">
+                         <span 
+                           className="px-1 py-0.5 rounded cursor-help" 
+                           title={`Total Time: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? formatTime(userStats[participant.id].totalTime * 60) : 'Private') : 'No data'}`}
+                         >
+                           ⏰
+                         </span>
+                         <span 
+                           className="px-1 py-0.5 rounded cursor-help" 
+                           title={`Sessions: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? (participant.id === user?.id ? userStats[participant.id].sessions : 'Private') : 'No data'}`}
+                         >
+                           🎯
+                         </span>
+                         <span 
+                           className="px-1 py-0.5 rounded cursor-help" 
+                           title={`Study Subject: ${userStats[participant.id]?.loading ? 'Loading...' : userStats[participant.id] ? userStats[participant.id].mainSubject : 'No data'}`}
+                         >
+                           📚
+                         </span>
+                       </div>
                     </div>
                   ))
                 ) : (
@@ -767,6 +956,14 @@ const Room = () => {
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Open Chat
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={handleTestSaveSession}
+                >
+                  🧪 Test Save Session
                 </Button>
                 
                 <RoomSettingsDialog 

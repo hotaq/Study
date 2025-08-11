@@ -4,12 +4,16 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Clock, Target, Award, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Clock, Target, Award, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StudyAnalytics } from '@/components/StudyAnalytics';
 import { SubjectSelect } from '@/components/SubjectSelect';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
+import { SubjectDistributionChart } from '@/components/SubjectDistributionChart';
+import { StudyHeatmap } from '@/components/StudyHeatmap';
+import { ProductivityScore } from '@/components/ProductivityScore';
+import { SessionStatistics } from '@/components/SessionStatistics';
 
 interface StudySession {
   id: string;
@@ -295,7 +299,38 @@ function Analytics() {
           </TabsContent>
 
           <TabsContent value="charts">
-            <StudyAnalytics subject_id={selectedSubject} />
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                <div className="w-full sm:w-64">
+                  <SubjectSelect
+                    value={selectedSubject}
+                    onValueChange={setSelectedSubject}
+                    label="Filter by Subject"
+                    placeholder="All Subjects"
+                  />
+                </div>
+                <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'all')}>
+                  <TabsList className="enhanced-tabs">
+                    <TabsTrigger value="week" className="enhanced-tab">Week</TabsTrigger>
+                    <TabsTrigger value="month" className="enhanced-tab">Month</TabsTrigger>
+                    <TabsTrigger value="all" className="enhanced-tab">All Time</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              
+              {/* Original Study Analytics */}
+              <StudyAnalytics subject_id={selectedSubject} />
+              
+              {/* New Analytics Components */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <ProductivityScore period={selectedPeriod} />
+                <SubjectDistributionChart period={selectedPeriod} />
+              </div>
+              
+              <StudyHeatmap period={selectedPeriod} />
+              
+              <SessionStatistics selectedSubject={selectedSubject} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

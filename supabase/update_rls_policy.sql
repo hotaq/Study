@@ -1,13 +1,18 @@
--- Drop the existing policy
-DROP POLICY IF EXISTS "Users can insert their own scores" ON public.exam_scores;
+-- Update RLS policy to allow viewing stats of users in the same room
 
--- Create a new policy that allows users to insert scores without requiring them to be participants first
-CREATE POLICY "Users can insert their own scores" ON public.exam_scores 
-FOR INSERT 
+-- Drop existing policy
+DROP POLICY IF EXISTS "Users can view their own study sessions" ON public.study_sessions;
+
+-- Create new policy that allows viewing own sessions AND sessions of users in the same room
+CREATE POLICY "Users can view study sessions in shared rooms" ON public.study_sessions
+FOR SELECT
 TO authenticated
-WITH CHECK (
-  user_id = auth.uid() AND
-  (room_id IN (
-    SELECT room_id FROM public.room_participants WHERE user_id = auth.uid()
-  ) OR TRUE) -- Allow users to insert scores even if they're not participants yet
+USING (
+  user_id = auth.uid() OR
+  EXISTS (
+    SELECT 1 FROM public.room_participants rp1
+    JOIN public.room_participants rp2 ON rp1.room_id = rp2.room_id
+    WHERE rp1.user_id = auth.uid() 
+    AND rp2.user_id = study_sessions.user_id
+  )
 );

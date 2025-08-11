@@ -6,12 +6,13 @@ import { Play, Pause, Square, RotateCcw } from "lucide-react";
 
 interface StudyTimerProps {
   onSessionComplete?: (duration: number) => void;
+  onTimeUpdate?: (seconds: number) => void; // For continuous time tracking
   mode: "pomodoro" | "unlimited" | "custom";
   displayStyle?: "circle" | "bar";
   customTime?: number; // Custom time in minutes
 }
 
-export const StudyTimer = ({ onSessionComplete, mode, displayStyle = "circle", customTime = 30 }: StudyTimerProps) => {
+export const StudyTimer = ({ onSessionComplete, onTimeUpdate, mode, displayStyle = "circle", customTime = 30 }: StudyTimerProps) => {
   const POMODORO_TIME = 25 * 60; // 25 minutes for Pomodoro
   const CUSTOM_TIME = customTime * 60; // Convert minutes to seconds
   
@@ -49,12 +50,19 @@ export const StudyTimer = ({ onSessionComplete, mode, displayStyle = "circle", c
           }
         } else {
           // Count up for unlimited mode
-          setElapsedTime((prev) => prev + 1);
-          
-          // Count a session every 25 minutes in unlimited mode
-          if (elapsedTime > 0 && elapsedTime % (25 * 60) === 0) {
-            onSessionComplete?.(25 * 60);
-          }
+          setElapsedTime((prev) => {
+            const newElapsed = prev + 1;
+            
+            // Update total time every second in unlimited mode
+            onTimeUpdate?.(1);
+            
+            // Count a session every 25 minutes in unlimited mode for database tracking
+            if (newElapsed > 0 && newElapsed % (25 * 60) === 0) {
+              onSessionComplete?.(25 * 60);
+            }
+            
+            return newElapsed;
+          });
         }
       }, 1000);
     }
