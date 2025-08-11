@@ -158,6 +158,8 @@
   .focus-card {
     @apply bg-card border border-border rounded-xl p-6 transition-all duration-300;
     box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
   }
   
   .focus-card:hover {
@@ -165,8 +167,55 @@
     box-shadow: var(--shadow-focus);
   }
   
+  .focus-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--focus)), hsl(var(--secondary)));
+    opacity: 0.7;
+  }
+  
+  .focus-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, hsl(var(--primary)/0.05), transparent 50%);
+    pointer-events: none;
+  }
+  
   .timer-circle {
     @apply rounded-full border-4 border-primary/20 bg-primary/5;
     background: conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--primary-glow)), hsl(var(--focus)));
+  }
+  
+  /* Enhanced Tabs */
+  .enhanced-tabs {
+    @apply w-full p-1 rounded-xl bg-muted/50 backdrop-blur-sm border border-border;
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .enhanced-tab {
+    @apply relative rounded-lg px-4 py-2.5 font-medium transition-all duration-300;
+  }
+  
+  .enhanced-tab[data-state="active"] {
+    @apply bg-card text-foreground;
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .enhanced-tab[data-state="active"]::before {
+    content: "";
+    @apply absolute left-0 bottom-0 h-[3px] w-full rounded-b-lg bg-gradient-to-r from-primary via-focus to-secondary;
+    opacity: 0.8;
+  }
+  
+  .enhanced-tab:hover:not([data-state="active"]) {
+    @apply bg-accent/50 text-foreground;
   }
 }

@@ -9,7 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 
 interface CreateRoomDialogProps {
-  onCreateRoom: (room: any) => void;
+  onCreateRoom: (room: {
+    name: string;
+    description?: string;
+    preset: string;
+    isPrivate: boolean;
+    maxParticipants: number;
+  }) => void;
 }
 
 export const CreateRoomDialog = ({ onCreateRoom }: CreateRoomDialogProps) => {
@@ -31,15 +37,14 @@ export const CreateRoomDialog = ({ onCreateRoom }: CreateRoomDialogProps) => {
     { value: "language", label: "Language Learning", description: "Language practice and learning" }
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const room = {
-      id: Date.now().toString(),
       ...formData,
       participants: [],
       createdAt: new Date().toISOString()
     };
-    onCreateRoom(room);
+    await onCreateRoom(room);
     setOpen(false);
     setFormData({
       name: "",

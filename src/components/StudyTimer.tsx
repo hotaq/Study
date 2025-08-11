@@ -1,59 +1,156 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Play, Pause, Square, RotateCcw } from "lucide-react";
 
 interface StudyTimerProps {
   onSessionComplete?: (duration: number) => void;
+  mode: "pomodoro" | "unlimited" | "custom";
+  displayStyle?: "circle" | "bar";
+  customTime?: number; // Custom time in minutes
 }
 
-export const StudyTimer = ({ onSessionComplete }: StudyTimerProps) => {
-  const [time, setTime] = useState(25 * 60); // 25 minutes default
+export const StudyTimer = ({ onSessionComplete, mode, displayStyle = "circle", customTime = 30 }: StudyTimerProps) => {
+  const POMODORO_TIME = 25 * 60; // 25 minutes for Pomodoro
+  const CUSTOM_TIME = customTime * 60; // Convert minutes to seconds
+  
+  const [time, setTime] = useState(mode === "pomodoro" ? POMODORO_TIME : (mode === "custom" ? CUSTOM_TIME : 0)); // Start at 0 for unlimited
   const [isRunning, setIsRunning] = useState(false);
-  const [totalTime] = useState(25 * 60);
+  const [totalTime] = useState(mode === "pomodoro" ? POMODORO_TIME : (mode === "custom" ? CUSTOM_TIME : 0));
+  const [elapsedTime, setElapsedTime] = useState(0); // For unlimited mode tracking
+
+  // Reset timer when mode changes
+  useEffect(() => {
+    if (mode === "pomodoro") {
+      setTime(POMODORO_TIME);
+    } else if (mode === "custom") {
+      setTime(CUSTOM_TIME);
+    } else {
+      // For unlimited mode, we count up instead of down
+      setTime(0);
+      setElapsedTime(0);
+    }
+    setIsRunning(false);
+  }, [mode, POMODORO_TIME, CUSTOM_TIME]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isRunning && time > 0) {
+    
+    if (isRunning) {
       interval = setInterval(() => {
-        setTime((time) => time - 1);
+        if (mode === "pomodoro" || mode === "custom") {
+          // Count down for Pomodoro and Custom modes
+          if (time > 0) {
+            setTime((time) => time - 1);
+          } else {
+            setIsRunning(false);
+            onSessionComplete?.(mode === "pomodoro" ? POMODORO_TIME : CUSTOM_TIME);
+          }
+        } else {
+          // Count up for unlimited mode
+          setElapsedTime((prev) => prev + 1);
+          
+          // Count a session every 25 minutes in unlimited mode
+          if (elapsedTime > 0 && elapsedTime % (25 * 60) === 0) {
+            onSessionComplete?.(25 * 60);
+          }
+        }
       }, 1000);
-    } else if (time === 0) {
-      setIsRunning(false);
-      onSessionComplete?.(totalTime);
     }
+    
     return () => clearInterval(interval);
-  }, [isRunning, time, totalTime, onSessionComplete]);
+  }, [isRunning, time, mode, POMODORO_TIME, CUSTOM_TIME, onSessionComplete, elapsedTime]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+  
+  // Format time for unlimited mode (includes hours)
+  const formatElapsedTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  const progress = ((totalTime - time) / totalTime) * 100;
+  // Calculate progress differently based on mode
+  const progress = mode === "pomodoro" || mode === "custom" 
+    ? ((totalTime - time) / totalTime) * 100 
+    : (elapsedTime % 300) / 300 * 100; // For unlimited mode, use a 5-minute cycle for the progress indicator
 
   const handleReset = () => {
-    setTime(totalTime);
+    if (mode === "pomodoro") {
+      setTime(POMODORO_TIME);
+    } else if (mode === "custom") {
+      setTime(CUSTOM_TIME);
+    } else {
+      setElapsedTime(0);
+    }
     setIsRunning(false);
   };
 
-  return (
-    <Card className="focus-card flex flex-col items-center justify-center p-8 min-h-[300px]">
-      <div className="relative">
-        <div 
-          className="w-40 h-40 rounded-full border-8 border-muted flex items-center justify-center"
-          style={{
-            background: `conic-gradient(from 0deg, hsl(var(--primary)) ${progress}%, hsl(var(--muted)) ${progress}%)`
-          }}
-        >
-          <div className="w-32 h-32 bg-background rounded-full flex items-center justify-center">
-            <span className="text-3xl font-bold text-foreground">
-              {formatTime(time)}
-            </span>
+  // Render the timer display based on the selected style
+  const renderTimerDisplay = () => {
+    const timeDisplay = mode === "unlimited" ? formatElapsedTime(elapsedTime) : formatTime(time);
+    
+    if (displayStyle === "circle") {
+      return (
+        <div className="relative">
+          <div 
+            className="w-40 h-40 rounded-full border-8 border-muted flex items-center justify-center"
+            style={{
+              background: `conic-gradient(from 0deg, hsl(var(--primary)) ${progress}%, hsl(var(--muted)) ${progress}%)`
+            }}
+          >
+            <div className="w-32 h-32 bg-background rounded-full flex items-center justify-center">
+              <span className="text-3xl font-bold text-foreground">
+                {timeDisplay}
+              </span>
+            </div>
           </div>
         </div>
+      );
+    } else {
+      return (
+        <div className="w-full max-w-md">
+          <div className="text-4xl font-bold text-foreground text-center mb-4">
+            {timeDisplay}
+          </div>
+          <div className="w-full bg-muted rounded-full h-4 mb-2">
+            <div 
+              className={`h-4 rounded-full transition-all duration-300 ease-in-out ${mode === "pomodoro" || mode === "custom" ? "bg-primary" : "bg-primary/30"}`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          {(mode === "pomodoro" || mode === "custom") && (
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0%</span>
+              <span>100%</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+  };
+  
+  return (
+    <Card className="focus-card flex flex-col items-center justify-center p-8 min-h-[300px]">
+      <div className="absolute top-4 right-4 flex gap-2">
+        <Badge variant={mode === "pomodoro" ? "default" : (mode === "custom" ? "outline" : "secondary")}>
+          {mode === "pomodoro" ? "Pomodoro" : (mode === "custom" ? `Custom (${customTime}m)` : "Unlimited")}
+        </Badge>
+        <Badge variant={displayStyle === "circle" ? "outline" : "secondary"}>
+          {displayStyle === "circle" ? "Circle" : "Bar"}
+        </Badge>
       </div>
+      {renderTimerDisplay()}
       
       <div className="flex gap-4 mt-8">
         <Button
